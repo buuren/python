@@ -1,0 +1,13 @@
+Install:
+1) download latest http://www.askyb.com/python/importing-selenium-module-to-your-python-library/
+2) tar -zxvf 
+3) cd selenium
+4) python setup.py install
+
+Test:
+1) python
+2) from selenium import webdriver
+
+Run local server:
+1) download https://code.google.com/p/selenium/downloads/list/ JAR_file
+2) run: java -jar JAR_FILE

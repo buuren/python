@@ -1,0 +1,4 @@
+Requirements: 
+
+1) apache2 webserver installed
+2) Some folder, 
