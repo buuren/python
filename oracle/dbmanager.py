@@ -1,5 +1,4 @@
 import cx_Oracle
-import collections
 
 class DatabaseManager(object):
     def __init__(self, connection_string):
