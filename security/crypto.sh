@@ -1,10 +1,10 @@
 #yum install libffi-devel
-#
-
+#pip install pycrypto
+#pip install cryptography
+#pip install crypto
 import crypto
 import sys
-sys.modules['Crypto'] = crypto
-from crypto.Cipher import AES
+from Crypto.Cipher import AES
 import base64
 PADDING = '{'
 BLOCK_SIZE = 32
