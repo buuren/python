@@ -15,3 +15,6 @@ http://evgenqa.blogspot.com/ (Rus)
 $ sudo apt-get install python-setuptools # installs easy_install
 $ sudo easy_install pip # installs pip
 $ sudo pip install virtualenv # installs virtualenv
+
+
+https://codewords.recurse.com/issues/one/an-introduction-to-functional-programming
