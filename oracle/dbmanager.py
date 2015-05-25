@@ -1,26 +1,55 @@
 import cx_Oracle
+import datetime
+import os
+
 
 class DatabaseManager(object):
-    def __init__(self, connection_string):
-        self.__connection_string = connection_string
+    def __init__(self, connection_string, tns=False):
+        self.__tns_connection = tns
+
+        if self.__tns_connection:
+            db_user = connection_string.split('/')[0]
+            db_pass = connection_string.split('/')[1].split('@')[0]
+            db_ip = connection_string.split('@')[1].split(':')[0]
+            db_port = connection_string.split(':')[1].split('/')[0]
+            db_sid = connection_string.split(':')[1].split('/')[1]
+            db_tns = cx_Oracle.makedsn(db_ip, db_port, db_sid)
+            db_con = cx_Oracle.connect(db_user, db_pass, db_tns)
+            self.__connection_string = db_con
+
+        else:
+            self.__connection_string = connection_string
+
+        self.start_time = datetime.datetime.now()
+        self.query_count = 0
 
     def __enter__(self):
-        self.__db = cx_Oracle.Connection(self.__connection_string)
+        if self.__tns_connection:
+            self.__db = self.__connection_string
+        else:
+            self.__db = cx_Oracle.Connection(self.__connection_string)
+
         self.__cursor = self.__db.cursor()
         return self
 
     def __exit__(self, type, value, traceback):
+        done_time = datetime.datetime.now() - self.start_time
+
+        print 'DatabaseManager: DONE'
+        print 'Run %s queries in %s seconds [1/%s q/Msec]' % (self.query_count,
+                                                                  done_time.total_seconds(),
+                                                                  (done_time.total_seconds() * 100.0) / self.query_count
+        )
         self.__db.close()
 
     def query_executor(self, query, logging=False, store_output=False):
+
         try:
             if logging:
                 print 'Executing query: %s' % query
             self.__db.begin()
-
-            #if store_output:
             self.store_execute_output = self.__cursor.execute(query)
-
+            self.query_count += 1
             self.cursor_output = self.__cursor.fetchall()
             self.__db.commit()
             return self
@@ -88,9 +117,20 @@ class DatabaseManager(object):
                     if string_to_search in str(each_table_column_value):
                         print 'Found match at table: [%s], column: [%s], match: [%s]' % (each_analyzie_table, each_table_column_set[0], each_table_column_value)
 
+    def store_cid_revision(self, revision_list):
+        dictonary_output = dict()
+
+        for each_cid in revision_list:
+            select_sql = "select max(drevlabel) from revisions where DDOCNAME = '%s'" % each_cid
+            self.query_executor(select_sql)
+
+            for each_sql_output in self.cursor_output:
+                dictonary_output[each_cid] = each_sql_output[0]
+
+        return dictonary_output
+
 if __name__ == "__main__":
-    base_connection_string = "user/pass@hostname:port/sid"
-    secondary_connection_string = "user/pass@hostname:port/sid"
+    base_connection_string = "user/pass@db_hostname:port/SID"
 
     def compare_user_objects():
         with DatabaseManager(base_connection_string) as db_instance:
@@ -110,7 +150,6 @@ if __name__ == "__main__":
             else:
 
                 print 'Need to add: %s : %s' % (key, secondary_results[key])
-    compare_user_objects()
 
     def analyze_tables():
         with DatabaseManager(secondary_connection_string) as db_instance:
@@ -120,4 +159,21 @@ if __name__ == "__main__":
                 skip_tables_regex='$'
             )
 
-    analyze_tables()
+    def compare_cid_revs(revision_list):
+        with DatabaseManager(secondary_connection_string) as db_instance:
+            dev_revisions = db_instance.store_cid_revision(revision_list)
+
+        with DatabaseManager(base_connection_string) as db_instance:
+            test_revisions = db_instance.store_cid_revision(revision_list)
+
+        for each_dev_cid, cid_dev_revision in dev_revisions.iteritems():
+            test_cid_revision = test_revisions[each_dev_cid]
+            if cid_dev_revision != test_cid_revision:
+                print 'The following item revision does not match: %s' % each_dev_cid
+                print 'In source: %s' % cid_dev_revision
+                print 'In target: %s' % test_cid_revision
+
+    with open('/home/user/list.txt') as file_content:
+        revisions_from_txt = file_content.read().splitlines()
+
+    compare_cid_revs(revisions_from_txt)
